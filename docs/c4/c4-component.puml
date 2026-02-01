@@ -1,0 +1,53 @@
+@startuml C4_Component
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 - Level 3 (Component) - Componentes principales (App + BFF)
+
+Person(user, "Paciente/Usuario", "Interactúa por chat (texto).")
+
+System_Boundary(mobileBoundary, "App Móvil (Android PoC / iOS visión)") {
+
+  Component(chatUI, "Chat UI", "UI", "Renderiza conversación y entradas del usuario.")
+  Component(conversationController, "Conversation Controller", "App Layer", "Coordina turns, aplica reglas de UI, decide cuándo abrir flujos determinísticos.")
+  Component(stateStore, "Conversation State Store", "Local Storage", "Persistencia local cifrada del estado conversacional (TTL 24h).")
+  Component(toolDispatcher, "Tool Dispatcher", "Domain Orchestration", "Ejecuta Tools locales (ej. triaje offline) mediante Commands.")
+  Component(triageTool, "TriageTool (offline)", "Domain Tool", "Clasificación determinística: emergencia/cita/autocuidado.")
+  Component(networkClient, "BFF Client", "Networking", "Envía mensajes al BFF y recibe respuesta + acciones.")
+  Component(remindersLocal, "Local Reminders", "Local", "Recordatorios locales / notificaciones locales (PoC).")
+
+  Rel(user, chatUI, "Escribe mensajes")
+  Rel(chatUI, conversationController, "Envía input / renderiza output")
+  Rel(conversationController, stateStore, "Lee/escribe estado (24h)")
+  Rel(conversationController, networkClient, "Llama al BFF en modo online", "HTTPS")
+  Rel(conversationController, toolDispatcher, "Encola/ejecuta Commands locales (fallback)")
+  Rel(toolDispatcher, triageTool, "execute(RunTriageCommand)")
+  Rel(remindersLocal, stateStore, "Lee/escribe recordatorios/estado", "Local")
+}
+
+System_Boundary(bffBoundary, "BFF / Assistant API") {
+
+  Component(apiController, "Assistant API Controller", "API", "Recibe mensajes, valida requests, retorna respuestas estructuradas.")
+  Component(orchestrator, "Conversation Orchestrator", "App Service", "Decide estrategia: tool-calling, fallback, composición de respuesta.")
+  Component(policy, "PHI Policy & Redaction", "Security", "Minimiza/redacta PHI, rate-limit, controla logging.")
+  Component(intentInterpreter, "Intent Interpreter", "NLP", "Interpreta intención y extrae parámetros (slots).")
+  Component(toolRouter, "Tool Router", "Routing", "Mapea Commands a Tools (citas, historial, etc.).")
+  Component(llmPort, "LLMProvider (Port)", "Port", "Interfaz para proveedor IA intercambiable.")
+  Component(llmAdapter, "LLM Adapter (Adapter)", "Adapter", "Implementación concreta del proveedor IA o FakeLLM en PoC.")
+  Component(schedulingAdapter, "SchedulingTool Adapter", "Adapter", "Adapter hacia servicio de citas (stub/fake).")
+  Component(medAdapter, "MedicalRecordsTool Adapter", "Adapter", "Adapter hacia historial (stub/fake).")
+  Component(obs, "Observability", "Cross-cutting", "Métricas/trazas/logs sin PHI.")
+
+  Rel(apiController, orchestrator, "Pasa turn + contexto")
+  Rel(orchestrator, policy, "Aplica políticas PHI")
+  Rel(orchestrator, intentInterpreter, "Interpreta intención")
+  Rel(orchestrator, toolRouter, "Construye Commands y enruta a Tools")
+  Rel(toolRouter, schedulingAdapter, "execute(Schedule/Modify/Cancel)")
+  Rel(toolRouter, medAdapter, "execute(GetMedicalInfo)")
+  Rel(intentInterpreter, llmPort, "Consulta IA", "HTTPS")
+  Rel(llmPort, llmAdapter, "Implementación concreta")
+  Rel(orchestrator, obs, "Emite métricas/trazas/logs", "OTel/HTTP")
+}
+
+Rel(networkClient, apiController, "Envía mensajes + recibe respuesta/acciones", "HTTPS")
+
+@enduml

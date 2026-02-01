@@ -1,0 +1,49 @@
+@startuml C4_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C4 - Level 2 (Container) - Asistente Conversacional para App de Salud
+
+Person(user, "Paciente/Usuario", "Interactúa mediante lenguaje natural (texto) para triaje, citas, historial y recordatorios.")
+
+System_Boundary(s1, "Sistema de Salud - Asistente Conversacional") {
+
+  Container(mobile, "App Móvil (Android PoC / iOS visión)", "Nativo", "Interfaz híbrida: chat + UI determinística para confirmaciones críticas. Estado conversacional local 24h. Triaje offline mínimo. Recordatorios locales (PoC).")
+  ContainerDb(localStore, "Almacenamiento local cifrado", "SQLite/Key-Value", "Estado conversacional (TTL 24h), reglas mínimas de triaje offline, flags de modo offline, recordatorios locales.")
+
+  Container(bff, "BFF / Assistant API", "Backend", "Orquestación online: políticas PHI, integración IA, tool-calling hacia capacidades (citas/historial), respuestas estructuradas (texto + acciones).")
+  ContainerDb(bffStore, "Store efímero / rate-limit (opcional)", "Cache/DB", "Contexto efímero, rate limits y telemetría sin PHI (visión).")
+
+  Container(scheduling, "Scheduling Service (stub/fake en PoC)", "Backend", "Disponibilidad y gestión de citas (reservar/modificar/cancelar).")
+  ContainerDb(schedulingDb, "DB Citas (stub)", "DB", "Datos mock de citas/horarios.")
+
+  Container(medRecords, "Medical Records Service (stub/fake en PoC)", "Backend", "Historial, exámenes y recetas (consulta).")
+  ContainerDb(medDb, "DB Historial (stub)", "DB", "Datos mock de historial.")
+
+  Container(remindersLocal, "Local Reminders (PoC)", "On-device", "Programación de recordatorios y notificaciones locales desde la app.")
+}
+
+System_Ext(llmProvider, "Proveedor IA (LLM)", "Externo", "NLP/LLM. Solo accesible desde el BFF (no SDK/llaves en cliente).")
+System_Ext(pushProvider, "Push Provider", "Externo", "APNs (iOS) / FCM (Android) para notificaciones push (visión producción opcional).")
+System_Ext(obs, "Observabilidad", "Externo", "Métricas/trazas/logs sin PHI (visión).")
+
+Rel(user, mobile, "Usa", "Texto/Touch")
+
+Rel(mobile, localStore, "Lee/escribe estado (24h) y reglas mínimas", "Local")
+Rel(mobile, bff, "Envía mensajes y recibe respuesta + acciones", "HTTPS")
+Rel(mobile, remindersLocal, "Crea/gestiona recordatorios locales", "Local")
+
+Rel(bff, llmProvider, "Integra IA vía adapter", "HTTPS")
+Rel(bff, scheduling, "Tool-calling: citas", "HTTPS")
+Rel(bff, medRecords, "Tool-calling: historial", "HTTPS")
+
+Rel(bff, bffStore, "Guarda contexto efímero / rate-limit (opcional)", "Cache/DB")
+Rel(scheduling, schedulingDb, "Lee/escribe", "DB")
+Rel(medRecords, medDb, "Lee", "DB")
+
+Rel(bff, obs, "Métricas/trazas/logs sin PHI", "OTel/HTTP")
+Rel(mobile, obs, "Métricas básicas sin PHI", "OTel/HTTP")
+
+Rel(bff, pushProvider, "Dispara notificaciones push (visión)", "HTTPS")
+Rel(pushProvider, mobile, "Entrega notificación push", "APNs/FCM")
+
+@enduml

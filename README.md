@@ -1,147 +1,103 @@
-# Asistente Conversacional para Aplicación Móvil de Salud
+# Health Assistant Conversacional – Arquitectura (PoC Mobile)
 
-## 1. Objetivo del sistema
-Diseñar la arquitectura de un asistente conversacional integrado en una aplicación móvil de salud que permita a los usuarios interactuar mediante lenguaje natural para:
+## Resumen Ejecutivo
 
-- Triaje de síntomas
-- Agendamiento y gestión de citas
-- Consulta de información médica
-- Gestión de recordatorios
+Este repositorio presenta el diseño e implementación de la **arquitectura de un asistente conversacional integrado en una aplicación móvil de Salud**, donde el chatbot actúa como **interfaz inteligente** para permitir a los usuarios acceder a las funcionalidades de la app mediante **lenguaje natural**, sin necesidad de navegar manualmente por múltiples pantallas.
 
-El asistente actúa como una **interfaz inteligente**, reduciendo la necesidad de navegar manualmente por múltiples pantallas, manteniendo seguridad, resiliencia y buen rendimiento en dispositivos móviles.
+El foco del reto no es la implementación funcional completa, sino **demostrar pensamiento arquitectónico**, priorizando:
+- performance en dispositivos móviles,
+- escalabilidad,
+- resiliencia,
+- privacidad de datos de salud (PHI),
+- y una visión clara multiplataforma.
 
----
-
-## 2. Alcance de la solución
-- **Android**: Proof of Concept (PoC)
-- **iOS**: Visión arquitectónica
-- **Backend**: Orquestación y políticas (BFF)
-- **IA**: Integración desacoplada mediante adapters
-
-Para el reto:
-- 2 capacidades implementadas con mayor profundidad (Triaje, Agendamiento)
-- 2 capacidades implementadas de forma simplificada (Historial, Recordatorios)
+La solución se presenta como una **PoC Android**, con **visión explícita para iOS y producción**.
 
 ---
 
-## 3. Enfoque arquitectónico
+## Visión Arquitectónica
 
-### 3.1 Hybrid Assistant (Conversacional + UI determinística)
-El asistente combina:
-- Conversación en lenguaje natural
-- Pantallas de confirmación visual para acciones críticas (crear/modificar citas)
-- Confirmaciones simples en chat para acciones no críticas (cancelar)
+La arquitectura adopta un enfoque de **Hybrid Assistant**:
 
-Este enfoque reduce errores, mejora la confianza del usuario y mantiene control clínico.
+- El **chatbot no es solo IA**, sino un **orquestador de capacidades**.
+- Algunas decisiones se resuelven mediante **conversación natural**.
+- Otras acciones críticas se ejecutan mediante **UI determinística** (pantallas o diálogos de confirmación).
 
----
-
-### 3.2 Mobile-first con capacidades offline
-El sistema está diseñado priorizando:
-- conectividad inestable
-- dispositivos de gama baja
-- bajo consumo de batería
-
-El **triaje inicial** puede operar offline mediante reglas mínimas locales, permitiendo una clasificación básica aun sin red.
+### Principios clave
+- **Mobile-first**: la experiencia está optimizada para mobile (latencia, batería, UX).
+- **Offline parcial**: el triaje básico funciona sin conexión.
+- **Contract-first**: la lógica de negocio se modela como *Commands* y *Tools*.
+- **Privacidad by design**: el cliente móvil no expone PHI a proveedores de IA.
+- **Baja complejidad cognitiva**: módulos profundos con interfaces simples.
 
 ---
 
-## 4. Decisiones Arquitectónicas (ADR)
-Las principales decisiones están documentadas en los ADR:
+## Abordaje del reto
 
-- **ADR-001**: Hybrid Assistant (chat + UI)
-- **ADR-002**: Estado conversacional local con TTL de 24h
-- **ADR-003**: Backend (BFF) como punto único de integración IA y políticas PHI
-- **ADR-004**: Orquestación basada en Tools/Commands
-- **ADR-005**: Triaje offline mínimo
-- **ADR-006**: Resiliencia y degradación controlada
+### 1. Performance bajo restricciones
+- Triaje offline mediante reglas determinísticas.
+- Persistencia local cifrada del estado conversacional (TTL 24h).
+- Reducción de dependencias en tiempo real con backend.
+- Uso de UI determinística para flujos críticos (agendamiento / confirmación).
 
----
+### 2. Escalabilidad horizontal
+- El asistente delega la orquestación compleja al **BFF (Backend for Frontend)**.
+- El backend expone herramientas desacopladas (Tools) que pueden escalar independientemente.
+- La arquitectura soporta crecer de miles a millones de usuarios sin rediseño estructural.
 
-## 5. Modelo C4
+### 3. Resiliencia y degradación elegante
+- Fallback a capacidades locales cuando la red o la IA no están disponibles.
+- Separación clara entre conversación, dominio y servicios externos.
+- Posibilidad de circuit breakers, retries y colas offline (definido a nivel arquitectónico).
 
-### 5.1 C4 – Context
-El sistema está compuesto por:
-- Usuario (Paciente)
-- App móvil de salud
-- BFF / Assistant API
-- Proveedor de IA (externo)
-- Servicios médicos (citas, historial)
-- Servicios de notificaciones (APNs / FCM – visión producción)
-
-El usuario interactúa únicamente con la app móvil.  
-La app nunca se comunica directamente con el proveedor de IA.
+### 4. Multiplataforma
+- La UI se mantiene **100% nativa** (Compose / SwiftUI).
+- La arquitectura está diseñada para reutilizar lógica core (visión KMP).
+- En producción, la IA y las políticas viven en el backend, evitando duplicación innecesaria.
 
 ---
 
-### 5.2 C4 – Container
-Containers principales:
-- **App Móvil (Android PoC / iOS visión)**  
-  UI conversacional, estado local, triaje offline, recordatorios locales.
-- **Local Encrypted Store**  
-  Estado conversacional (TTL 24h), reglas de triaje, recordatorios.
-- **BFF / Assistant API**  
-  Orquestación, políticas PHI, integración IA, tool-calling.
-- **Servicios de dominio (stubs en PoC)**  
-  Citas e historial médico.
-- **Proveedor IA (externo)**  
-  Accedido únicamente por el BFF.
-- **Push Provider (APNs / FCM)**  
-  Notificaciones (visión producción).
+## Alcance de la PoC
+
+### Implementación más detallada
+- **Triaje de síntomas** (offline, reglas básicas).
+- **Agendamiento y cancelación de citas** mediante conversación + confirmación explícita.
+
+### Implementación simplificada
+- Consulta de información médica.
+- Gestión de recordatorios (locales en PoC).
+
+Este enfoque permite demostrar las decisiones arquitectónicas clave sin sobre–implementar el dominio.
 
 ---
 
-### 5.3 C4 – Component
-#### App Móvil
-- Chat UI
-- Conversation Controller
-- Local Intent Router
-- Offline Triage Engine
-- Conversation State Store
-- Local Reminders Manager
+## Estructura del repositorio
 
-#### BFF / Assistant API
-- API Controller
-- Intent Interpreter (híbrido: reglas + LLM)
-- Conversation Orchestrator
-- Tool Dispatcher
-- LLM Provider Port + Adapters
-- PHI Policy Filter
+La documentación arquitectónica se encuentra organizada de la siguiente manera:
 
----
+```
+/docs
+├── prd.md # Product Requirements Document
+├── adr/
+│ ├── ADR-001.md # Multiplataforma / estrategia mobile
+│ ├── ADR-002.md # Estado conversacional
+│ ├── ADR-003.md # Privacidad y BFF
+│ ├── ADR-004.md # Tools / Commands (contract-first)
+│ ├── ADR-005.md # Triaje offline
+│ └── ADR-006.md # Resiliencia y degradación
+└── c4/
+├── c4-context.puml # C4 Level 1 – Context
+├── c4-container.puml # C4 Level 2 – Container
+└── c4-component.puml # C4 Level 3 – Component
+```
 
-## 6. Privacidad y seguridad (Privacy by Design)
-- El móvil no integra SDKs de IA.
-- El BFF aplica minimización y redacción de PHI.
-- Logs y métricas sin datos sensibles.
-- Estado local cifrado en dispositivo.
+La PoC Android se encuentra en el módulo `app/` y refleja directamente los conceptos definidos en los ADR y diagramas C4.
 
----
-
-## 7. Resiliencia y degradación
-- Timeouts explícitos
-- Retries con backoff
-- Circuit breakers por dependencia
-- Fallback a capacidades offline
-- Mensajes claros al usuario cuando una función está degradada
+Para un detalle técnico completo ver docs/architecture-overview.md
 
 ---
 
-## 8. Evolución a producción
-- Sustituir stubs por servicios reales
-- Sincronización de recordatorios y notificaciones push
-- Persistencia distribuida del estado conversacional
-- Escalado horizontal del BFF
-- Observabilidad completa sin PHI
+## Nota final
 
----
-
-## 9. Conclusión
-La arquitectura propuesta prioriza:
-- experiencia móvil
-- seguridad de datos de salud
-- resiliencia ante fallos
-- baja complejidad cognitiva
-- capacidad de evolución sin rediseños mayores
-
-El diseño es viable como PoC y escalable a un entorno productivo.
+Esta solución prioriza **claridad arquitectónica y capacidad de evolución**, dejando explícitas las decisiones tomadas y los trade-offs asumidos.  
+La arquitectura está preparada para producción, aunque la implementación presentada es una PoC enfocada en evaluación técnica.

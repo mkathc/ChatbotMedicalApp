@@ -1,0 +1,24 @@
+@startuml C4_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C4 - Level 1 (Context) - Asistente Conversacional para App de Salud
+
+Person(user, "Paciente/Usuario", "Usa la app móvil para triaje, citas, historial y recordatorios mediante lenguaje natural.")
+System(mobileApp, "App Móvil de Salud", "Android (PoC) / iOS (visión). Interfaz híbrida: conversación + UI determinística. Estado local 24h. Triaje offline mínimo.")
+System_Ext(bff, "BFF / Assistant API", "Orquestador online. Aplica políticas PHI, integra IA, enruta a capacidades (tools) y devuelve respuestas/acciones estructuradas.")
+System_Ext(scheduling, "Servicio de Citas", "Busca disponibilidad, reserva, modifica y cancela citas (mock/stub en PoC).")
+System_Ext(medRecords, "Servicio de Historial Médico", "Historial/exámenes/recetas (mock/stub en PoC).")
+System_Ext(remindersSvc, "Servicio de Recordatorios", "Recordatorios y notificaciones (parcialmente local en PoC).")
+System_Ext(llmProvider, "Proveedor IA (LLM)", "Proveedor externo para comprensión de lenguaje natural y respuestas (no accesible directo desde el cliente en producción).")
+System_Ext(obs, "Observabilidad/Monitoreo", "Métricas, trazas y logs sin PHI (visión).")
+
+Rel(user, mobileApp, "Interacciona vía chat (texto)")
+Rel(mobileApp, bff, "Envía mensajes y recibe respuestas + acciones", "HTTPS")
+Rel(bff, llmProvider, "Consulta IA mediante adapter", "HTTPS")
+Rel(bff, scheduling, "Orquesta operaciones de citas", "HTTPS")
+Rel(bff, medRecords, "Consulta información médica", "HTTPS")
+Rel(mobileApp, remindersSvc, "Gestiona recordatorios (local/servicio)", "Local/HTTPS")
+Rel(bff, obs, "Emite métricas/trazas/logs", "OTel/HTTP")
+Rel(mobileApp, obs, "Emite métricas básicas (sin PHI)", "OTel/HTTP")
+
+@enduml
