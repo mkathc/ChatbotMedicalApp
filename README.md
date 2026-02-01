@@ -4,13 +4,6 @@
 
 Este repositorio presenta el diseño e implementación de la **arquitectura de un asistente conversacional integrado en una aplicación móvil de Salud**, donde el chatbot actúa como **interfaz inteligente** para permitir a los usuarios acceder a las funcionalidades de la app mediante **lenguaje natural**, sin necesidad de navegar manualmente por múltiples pantallas.
 
-El foco del reto no es la implementación funcional completa, sino **demostrar pensamiento arquitectónico**, priorizando:
-- performance en dispositivos móviles,
-- escalabilidad,
-- resiliencia,
-- privacidad de datos de salud (PHI),
-- y una visión clara multiplataforma.
-
 La solución se presenta como una **PoC Android**, con **visión explícita para iOS y producción**.
 
 ---
